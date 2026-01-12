@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XLSmart Central Java - Pencarian Data Akun</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <header class="header">
+        <img src="logo_xlsmart.png" alt="XLSmart Logo" class="logo">
+        <h1>Pencarian Akun OWS SAPN</h1>
+        <p>Input NIK/KTP ID untuk mencari detail akun.</p>
+    </header>
+
+    <main class="container">
+        <div class="search-box">
+            <input type="text" id="nikInput" placeholder="Masukkan NIK/KTP ID (16 Digit)" maxlength="16" inputmode="numeric">
+            <button onclick="searchData()">CARI AKUN</button>
+        </div>
+
+        <div id="results" class="results-container">
+            <p class="initial-message">Masukkan NIK dan tekan tombol **CARI AKUN**.</p>
+        </div>
+
+        <div class="warning-box">
+            ⚠️ **PERINGATAN PENTING:** Data ini bersifat **RAHASIA**. Gunakan hanya untuk keperluan internal. **Password termasuk dalam data yang dapat dicari.** 
+        </div>
+    </main>
+
+    <footer class="footer">
+        <img src="logo_yptt.png" alt="YPTT Logo" class="logo-footer">
+        <p>© 2025 YPTT - XLSmart Central Java Tools</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
