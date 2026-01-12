@@ -1,88 +1,85 @@
-// URL JSON yang mengambil data dari Google Sheet Anda
-const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1-FjO_WXuYN35KMlQznzN3d_FkOrSq9NTfbLtcqrK-e8/gviz/tq?tqx=out:json&gid=0';
+// **PASTIKAN URL INI BENAR:** URL Web App Anda yang sudah terkonfirmasi.
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxmzrV2DDkF2CUZT4L9fxcK6YF4qoYV3dC0tUMC3ygecSPRQQWR1qGCUZV5z9YgjZFB/exec'; 
 
-// Variabel untuk menyimpan data yang sudah diolah dari Sheet
 let karyawanData = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Panggil fungsi untuk memuat data saat halaman selesai dimuat
+    // Pasang listener pada form (sebelum data dimuat) agar bisa menunjukkan status loading
+    document.getElementById('searchForm').addEventListener('submit', handleSearch);
     loadSheetData();
 });
 
+// Fungsi penanganan pencarian utama (Dipanggil saat tombol Cari ditekan)
+function handleSearch(event) {
+    event.preventDefault();
+    
+    // Jika data belum dimuat, jangan izinkan pencarian
+    if (karyawanData.length === 0) {
+         document.getElementById('result').innerHTML = '<p class="error">Data belum selesai dimuat. Silakan coba lagi sebentar.</p>';
+         return;
+    }
+    
+    // Lakukan pencarian hanya jika data sudah ada
+    searchKaryawan();
+}
+
 function loadSheetData() {
-    // Ambil elemen untuk pesan loading
     const resultDiv = document.getElementById('result');
     if (resultDiv) {
         resultDiv.innerHTML = '<p class="loading">Memuat data terbaru dari Google Sheet...</p>';
     }
 
-    // Ambil data dari Google Sheet URL
     fetch(SHEET_URL)
-        .then(response => response.text())
-        .then(text => {
-            // Data dari GSheets datang dalam format yang aneh, perlu diolah:
-            // Hapus bagian "/*O_o*/..." di awal dan akhir untuk mendapatkan JSON murni
-            const jsonText = text.substring(47).slice(0, -2);
-            const json = JSON.parse(jsonText);
-            
-            // Konversi data JSON menjadi array objek yang mudah dicari
-            karyawanData = transformSheetData(json.table);
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Gagal mengambil data dari Apps Script. Cek status deployment.');
+            }
+            return response.json();
+        })
+        .then(json => {
+            // Data sudah bersih dari Web App, langsung ambil array 'data'
+            karyawanData = json.data || [];
             
             console.log('Data berhasil dimuat. Total karyawan:', karyawanData.length);
             
-            // Hapus pesan loading dan siap menerima input
             if (resultDiv) {
-                 resultDiv.innerHTML = '<p class="info">Masukkan NIK KTP ID 16 Digit untuk mencari data akun OWS/SAPN.</p>';
+                 resultDiv.innerHTML = `<p class="info">Data ${karyawanData.length} NIK Karyawan Siap Dicari. Masukkan NIK KTP ID 16 Digit.</p>`;
             }
-            
-            // Aktifkan kembali fungsi pencarian setelah data dimuat
-            document.getElementById('searchForm').addEventListener('submit', searchKaryawan);
         })
         .catch(error => {
-            console.error('Error memuat data dari Sheet:', error);
+            console.error('Error memuat data:', error);
             if (resultDiv) {
-                resultDiv.innerHTML = '<p class="error">❌ Gagal memuat data dari Google Sheet. Pastikan Sheet sudah di-Publish ke web.</p>';
+                resultDiv.innerHTML = `<p class="error">❌ Gagal memuat data dari Google Sheet. Error: ${error.message}. Pastikan Web App di-Deploy sebagai 'Execute as: Me' dan 'Who has access: Anyone'.</p>`;
             }
         });
 }
 
-function transformSheetData(table) {
-    if (!table.cols || !table.rows) return [];
-    
-    // Ambil header kolom (Baris 1 di Sheet)
-    const headers = table.cols.map(col => col.label);
-    
-    return table.rows.map(row => {
-        const item = {};
-        row.c.forEach((cell, index) => {
-            // Ambil nilai sel. Gunakan nilai format jika ada, jika tidak, gunakan nilai biasa.
-            const value = cell ? (cell.f || cell.v) : '';
-            // Gunakan header sebagai kunci
-            item[headers[index]] = value; 
-        });
-        return item;
-    });
-}
 
-// --- Fungsi Pencarian (Sama seperti sebelumnya, tapi sekarang menggunakan karyawanData global) ---
-
-function searchKaryawan(event) {
-    event.preventDefault();
+function searchKaryawan() {
     const nikInput = document.getElementById('nikInput').value.trim();
     const resultDiv = document.getElementById('result');
     
-    resultDiv.innerHTML = '';
+    // **SANGAT PENTING: Kosongkan hasil sebelumnya**
+    resultDiv.innerHTML = ''; 
 
+    // 1. Validasi Input
     if (nikInput.length !== 16 || isNaN(nikInput)) {
-        resultDiv.innerHTML = '<p class="error">Masukkan NIK KTP ID 16 Digit yang valid.</p>';
-        return;
+        console.warn('NIK tidak valid.');
+        resultDiv.innerHTML = '<p class="error">Masukkan NIK KTP ID 16 Digit yang valid (hanya angka).</p>';
+        return; 
     }
 
+    // 2. Cari Data
+    // Gunakan find() untuk mencari NIK
     const foundData = karyawanData.find(karyawan => karyawan["KTP ID"] === nikInput);
+    
+    console.log('Mencari NIK:', nikInput, ' | Hasil Pencarian:', foundData ? 'Ditemukan' : 'Tidak Ditemukan');
 
+    // 3. Tampilkan Hasil
     if (foundData) {
         displayResult(foundData, resultDiv);
     } else {
+        // **JALUR DATA TIDAK DITEMUKAN - HARUS MUNCUL PESAN INI**
         resultDiv.innerHTML = '<p class="not-found">NIK ' + nikInput + ' tidak ditemukan dalam database.</p>';
     }
 }
@@ -93,8 +90,7 @@ function displayResult(data, container) {
 
     for (const key in data) {
         if (data.hasOwnProperty(key)) {
-            // Hilangkan data yang kosong kecuali NIK ID
-            if (data[key] || key === "KTP ID") { 
+            if (data[key]) { 
                 html += '<tr>';
                 html += '<th>' + key + '</th>';
                 html += '<td>' + data[key] + '</td>';
