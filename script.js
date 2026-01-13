@@ -1,104 +1,68 @@
-// **PASTIKAN URL INI BENAR:** URL Web App Anda yang sudah terkonfirmasi.
+// Gunakan URL Web App Anda yang baru
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxr5NYxcoOeSXz0lSElszWO-rJ1z1NZheOODHDkQ44g1cd4R-BBr5xXnq9ggBSd-D9V/exec'; 
 
-let karyawanData = [];
+let dataKaryawan = [];
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Pasang listener pada form (sebelum data dimuat) agar bisa menunjukkan status loading
-    document.getElementById('searchForm').addEventListener('submit', handleSearch);
+// Memuat data dari Google Sheet saat halaman dibuka
+window.onload = function() {
     loadSheetData();
-});
-
-// Fungsi penanganan pencarian utama (Dipanggil saat tombol Cari ditekan)
-function handleSearch(event) {
-    event.preventDefault();
-    
-    // Jika data belum dimuat, jangan izinkan pencarian
-    if (karyawanData.length === 0) {
-         document.getElementById('result').innerHTML = '<p class="error">Data belum selesai dimuat. Silakan coba lagi sebentar.</p>';
-         return;
-    }
-    
-    // Lakukan pencarian hanya jika data sudah ada
-    searchKaryawan();
-}
+};
 
 function loadSheetData() {
-    const resultDiv = document.getElementById('result');
-    if (resultDiv) {
-        resultDiv.innerHTML = '<p class="loading">Memuat data terbaru dari Google Sheet...</p>';
-    }
+    const resultsContainer = document.getElementById('results');
+    resultsContainer.innerHTML = '<p class="initial-message">🔄 Memuat data dari Google Sheet...</p>';
 
     fetch(SHEET_URL)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Gagal mengambil data dari Apps Script. Cek status deployment.');
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(json => {
-            // Data sudah bersih dari Web App, langsung ambil array 'data'
-            karyawanData = json.data || [];
-            
-            console.log('Data berhasil dimuat. Total karyawan:', karyawanData.length);
-            
-            if (resultDiv) {
-                 resultDiv.innerHTML = `<p class="info">Data ${karyawanData.length} NIK Karyawan Siap Dicari. Masukkan NIK KTP ID 16 Digit.</p>`;
+            if (json.data) {
+                dataKaryawan = json.data;
+                resultsContainer.innerHTML = `<p class="initial-message" style="color: green;">✅ Siap! ${dataKaryawan.length} data berhasil dimuat. Masukkan NIK dan tekan tombol **CARI AKUN**.</p>`;
             }
         })
         .catch(error => {
-            console.error('Error memuat data:', error);
-            if (resultDiv) {
-                resultDiv.innerHTML = `<p class="error">❌ Gagal memuat data dari Google Sheet. Error: ${error.message}. Pastikan Web App di-Deploy sebagai 'Execute as: Me' dan 'Who has access: Anyone'.</p>`;
-            }
+            console.error('Error:', error);
+            resultsContainer.innerHTML = '<p class="not-found">❌ Gagal memuat data. Periksa koneksi atau URL Apps Script Anda.</p>';
         });
 }
 
+function searchData() {
+    const searchTerm = document.getElementById('nikInput').value.trim();
+    const resultsContainer = document.getElementById('results');
 
-function searchKaryawan() {
-    const nikInput = document.getElementById('nikInput').value.trim();
-    const resultDiv = document.getElementById('result');
-    
-    // **SANGAT PENTING: Kosongkan hasil sebelumnya**
-    resultDiv.innerHTML = ''; 
+    resultsContainer.innerHTML = '';
 
-    // 1. Validasi Input
-    if (nikInput.length !== 16 || isNaN(nikInput)) {
-        console.warn('NIK tidak valid.');
-        resultDiv.innerHTML = '<p class="error">Masukkan NIK KTP ID 16 Digit yang valid (hanya angka).</p>';
-        return; 
+    // Validasi 16 Digit
+    if (searchTerm.length !== 16 || isNaN(searchTerm)) {
+        resultsContainer.innerHTML = '<p class="not-found">Silakan masukkan 16 digit NIK/KTP ID yang valid.</p>';
+        return;
     }
 
-    // 2. Cari Data
-    // Gunakan find() untuk mencari NIK
-    const foundData = karyawanData.find(karyawan => karyawan["KTP ID"] === nikInput);
-    
-    console.log('Mencari NIK:', nikInput, ' | Hasil Pencarian:', foundData ? 'Ditemukan' : 'Tidak Ditemukan');
-
-    // 3. Tampilkan Hasil
-    if (foundData) {
-        displayResult(foundData, resultDiv);
-    } else {
-        // **JALUR DATA TIDAK DITEMUKAN - HARUS MUNCUL PESAN INI**
-        resultDiv.innerHTML = '<p class="not-found">NIK ' + nikInput + ' tidak ditemukan dalam database.</p>';
+    if (dataKaryawan.length === 0) {
+        resultsContainer.innerHTML = '<p class="not-found">Data belum selesai dimuat. Mohon tunggu sebentar.</p>';
+        return;
     }
-}
 
-function displayResult(data, container) {
-    let html = '<h2>✅ Data Akun Ditemukan</h2>';
-    html += '<table>';
+    // Mencari NIK yang sesuai
+    const exactMatch = dataKaryawan.filter(item => String(item["KTP ID"]).trim() === searchTerm);
 
-    for (const key in data) {
-        if (data.hasOwnProperty(key)) {
-            if (data[key]) { 
-                html += '<tr>';
-                html += '<th>' + key + '</th>';
-                html += '<td>' + data[key] + '</td>';
-                html += '</tr>';
+    if (exactMatch.length > 0) {
+        exactMatch.forEach(item => {
+            const resultCard = document.createElement('div');
+            resultCard.className = 'result-card';
+            
+            let content = '<h3>✅ DATA DITEMUKAN</h3>';
+            // Menampilkan semua kolom yang ada di Sheet secara otomatis
+            for (const key in item) {
+                if (item[key]) {
+                    content += `<p><strong>${key}:</strong> ${item[key]}</p>`;
+                }
             }
-        }
+            resultCard.innerHTML = content;
+            resultsContainer.appendChild(resultCard);
+        });
+    } else {
+        // Pesan jika NIK tidak ditemukan
+        resultsContainer.innerHTML = `<p class="not-found">NIK <b>${searchTerm}</b> tidak ditemukan dalam database.</p>`;
     }
-    
-    html += '</table>';
-    container.innerHTML = html;
 }
