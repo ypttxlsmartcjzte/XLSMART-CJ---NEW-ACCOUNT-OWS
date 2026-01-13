@@ -1,5 +1,5 @@
 // **PASTIKAN URL INI BENAR:** URL Web App Anda yang sudah terkonfirmasi.
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxmzrV2DDkF2CUZT4L9fxcK6YF4qoYV3dC0tUMC3ygecSPRQQWR1qGCUZV5z9YgjZFB/exec'; 
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxr5NYxcoOeSXz0lSElszWO-rJ1z1NZheOODHDkQ44g1cd4R-BBr5xXnq9ggBSd-D9V/exec'; 
 
 let karyawanData = [];
 
